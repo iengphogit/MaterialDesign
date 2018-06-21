@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.SurfaceView;
 import android.widget.Toast;
 
+import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.JavaCameraView;
 import org.opencv.android.OpenCVLoader;
@@ -17,14 +18,15 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static final String TAG = "mMainActivity";
 
     static {
-        if(!OpenCVLoader.initDebug()){
-            Log.d(TAG,"OpenCV not loaded");
-        }else{
-            Log.d(TAG,"OpenCV loaded");
+        if (!OpenCVLoader.initDebug()) {
+            Log.d(TAG, "OpenCV not loaded");
+        } else {
+            Log.d(TAG, "OpenCV loaded");
         }
     }
 
     CameraBridgeViewBase cameraBridgeViewBase;
+    BaseLoaderCallback baseLoaderCallback;
     Mat mat1, mat2, mat3;
 
     @Override
@@ -35,6 +37,24 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         cameraBridgeViewBase = (JavaCameraView) findViewById(R.id.myCameraView);
         cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
         cameraBridgeViewBase.setCvCameraViewListener(this);
+
+        baseLoaderCallback = new BaseLoaderCallback(this) {
+            @Override
+            public void onManagerConnected(int status) {
+                switch (status) {
+
+                    case BaseLoaderCallback.SUCCESS:
+                        cameraBridgeViewBase.enableView();
+                        break;
+
+                    default:
+                        super.onManagerConnected(status);
+                        break;
+                }
+            }
+        };
+
+
     }
 
     @Override
@@ -61,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     protected void onPause() {
         super.onPause();
-        if(cameraBridgeViewBase != null){
+        if (cameraBridgeViewBase != null) {
             cameraBridgeViewBase.disableView();
         }
     }
@@ -69,10 +89,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     protected void onResume() {
         super.onResume();
-        if(!OpenCVLoader.initDebug()){
-            Toast.makeText(this,"There is a problem in openCV",Toast.LENGTH_SHORT).show();
-        }else{
-
+        if (!OpenCVLoader.initDebug()) {
+            Toast.makeText(this, "There is a problem in openCV", Toast.LENGTH_SHORT).show();
+        } else {
+            baseLoaderCallback.onManagerConnected(BaseLoaderCallback.SUCCESS);
         }
     }
 
