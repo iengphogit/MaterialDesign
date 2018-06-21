@@ -20,18 +20,33 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.Toast;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
+import org.json.JSONArray;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import tosmerl.avaboy.com.Retrofit.TosmerEndpoint;
+import tosmerl.avaboy.com.Retrofit.TosmerlService;
 
 
 public class MainActivity extends AppCompatActivity implements SearchView.OnQueryTextListener {
 
     SearchView searchView;
+    ProgressBar progressBar;
 
     private DrawerLayout mDrawerLayout;
     @Override
@@ -85,10 +100,42 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
             }
         });
 
-
+        progressBar = findViewById(R.id.progressBar);
     }
 
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        final long iMilli = System.currentTimeMillis();
+        progressBar.setVisibility(View.VISIBLE);
+        TosmerEndpoint s = TosmerlService.createService(TosmerEndpoint.class);
+        Call<JsonObject> call = s.index();
+        call.enqueue(new Callback<JsonObject>() {
+            @Override
+            public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
+                JsonObject object = response.body();
+                Log.d("my_onResponse","Result: " + object.get("data") + "msg: "+ object.get("message"));
+
+                JsonArray jsonArray = object.getAsJsonArray("arr_data");
+                for(int i=0; i < jsonArray.size(); i++){
+                    JsonObject obj = jsonArray.get(i).getAsJsonObject();
+                    Log.d("my_arr", "name: " + obj.get("title") + "  desc: " + obj.get("description"));
+                    Log.d("my_milli", System.currentTimeMillis() - iMilli + " milli");
+                }
+
+                progressBar.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onFailure(Call<JsonObject> call, Throwable t) {
+                Log.d("my_oonFailure","Result: " + t.getMessage());
+                progressBar.setVisibility(View.GONE);
+            }
+        });
+
+
+    }
 
     private void setUpViewPager(ViewPager viewPager){
         Adapter adapter = new Adapter(getSupportFragmentManager());

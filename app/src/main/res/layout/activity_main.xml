@@ -49,6 +49,12 @@
         app:srcCompat="@drawable/ic_add"
         android:tint="@color/white"/>
 
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
     </android.support.design.widget.CoordinatorLayout>
 
 
@@ -60,5 +66,6 @@
         android:fitsSystemWindows="true"
         app:headerLayout="@layout/navheader"
         app:menu="@menu/menu_navigation" />
+
 
 </android.support.v4.widget.DrawerLayout>
