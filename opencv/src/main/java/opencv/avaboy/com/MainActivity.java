@@ -10,8 +10,10 @@ import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.JavaCameraView;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -52,6 +54,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                         break;
                 }
             }
+            
         };
 
 
@@ -59,22 +62,36 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     @Override
     public void onCameraViewStarted(int width, int height) {
+        /*
         mat1 = new Mat(width, height, CvType.CV_8UC4);
         mat2 = new Mat(width, height, CvType.CV_8UC4);
         mat3 = new Mat(width, height, CvType.CV_8UC4);
+
+        */
+
+        mat1 = new Mat(height, width, CvType.CV_8UC4);
+        mat2 = new Mat(height, width, CvType.CV_8UC4);
+        mat3 = new Mat(height, width, CvType.CV_8UC4);
     }
 
     @Override
     public void onCameraViewStopped() {
         mat1.release();
-        mat2.release();
-        mat3.release();
+//        mat2.release();
+//        mat3.release();
     }
 
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
 
         mat1 = inputFrame.rgba();
+
+        /*
+        Core.transpose(mat1,mat2);
+        Imgproc.resize(mat2,mat3,mat3.size(),0,0,0);
+        Core.flip(mat3,mat1,1);
+        */
+
         return mat1;
     }
 

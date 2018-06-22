@@ -14,6 +14,7 @@ import android.content.DialogInterface;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -414,11 +415,16 @@ public abstract class CameraBridgeViewBase extends SurfaceView implements Surfac
                     Log.d(TAG, "mStretch value: " + mScale);
 
                 if (mScale != 0) {
-                    canvas.drawBitmap(mCacheBitmap, new Rect(0,0,mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
-                         new Rect((int)((canvas.getWidth() - mScale*mCacheBitmap.getWidth()) / 2),
-                         (int)((canvas.getHeight() - mScale*mCacheBitmap.getHeight()) / 2),
-                         (int)((canvas.getWidth() - mScale*mCacheBitmap.getWidth()) / 2 + mScale*mCacheBitmap.getWidth()),
-                         (int)((canvas.getHeight() - mScale*mCacheBitmap.getHeight()) / 2 + mScale*mCacheBitmap.getHeight())), null);
+                    if(canvas.getWidth() > canvas.getHeight()) {
+                        canvas.drawBitmap(mCacheBitmap, new Rect(0, 0, mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
+                                new Rect((int) ((canvas.getWidth() - mScale * mCacheBitmap.getWidth()) / 2),
+                                        (int) ((canvas.getHeight() - mScale * mCacheBitmap.getHeight()) / 2),
+                                        (int) ((canvas.getWidth() - mScale * mCacheBitmap.getWidth()) / 2 + mScale * mCacheBitmap.getWidth()),
+                                        (int) ((canvas.getHeight() - mScale * mCacheBitmap.getHeight()) / 2 + mScale * mCacheBitmap.getHeight())), null);
+                    }else{
+                        canvas.drawBitmap(mCacheBitmap,rotateMe(canvas,mCacheBitmap),null);
+                    }
+
                 } else {
                      canvas.drawBitmap(mCacheBitmap, new Rect(0,0,mCacheBitmap.getWidth(), mCacheBitmap.getHeight()),
                          new Rect((canvas.getWidth() - mCacheBitmap.getWidth()) / 2,
@@ -434,6 +440,16 @@ public abstract class CameraBridgeViewBase extends SurfaceView implements Surfac
                 getHolder().unlockCanvasAndPost(canvas);
             }
         }
+    }
+
+    private Matrix rotateMe(Canvas canvas, Bitmap bm) {
+        // TODO Auto-generated method stub
+        Matrix mtx=new Matrix();
+        float scale = (float) canvas.getWidth() / (float) bm.getHeight();
+        mtx.preTranslate((canvas.getWidth() - bm.getWidth())/2, (canvas.getHeight() - bm.getHeight())/2);
+        mtx.postRotate(90,canvas.getWidth()/2, canvas.getHeight()/2);
+        mtx.postScale(scale, scale, canvas.getWidth()/2 , canvas.getHeight()/2 );
+        return mtx;
     }
 
     /**
