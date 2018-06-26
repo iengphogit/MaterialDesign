@@ -3,13 +3,18 @@ package opencv.avaboy.com;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.bumptech.glide.Glide;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -18,7 +23,9 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
+import org.opencv.core.DMatch;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfDMatch;
 import org.opencv.core.MatOfKeyPoint;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
@@ -28,7 +35,9 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
+import org.opencv.features2d.FastFeatureDetector;
 import org.opencv.features2d.FeatureDetector;
+import org.opencv.features2d.ORB;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
@@ -86,12 +95,15 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         cIMG = new Mat();
         hovIMG = new Mat();
         approxCurve = new MatOfPoint2f();
+
+        descriptorExtractor = DescriptorExtractor.create(DescriptorExtractor.ORB);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         cameraBridgeViewBase = (JavaCameraView) findViewById(R.id.myCameraView);
         cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
@@ -159,7 +171,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         Imgproc.Canny(usIMG, bwIMG, 0 , threshold);
         Imgproc.dilate(bwIMG, bwIMG, new Mat(), new Point(-1,1),1);
 
-        List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+        List<MatOfPoint> contours = new ArrayList<>();
 
         cIMG = bwIMG.clone();
 
@@ -177,7 +189,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             if(Math.abs(contourArea) < 100){
                 continue;
             }
-
 
             //Rectangle Detected
             if( numberVertices >= 4 && numberVertices <= 6){
@@ -204,7 +215,25 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
 
 
-      return dst;
+        Bitmap src = BitmapFactory.decodeResource(getApplicationContext().getResources(), R.drawable.one);
+
+        Mat image = new Mat();
+        Utils.bitmapToMat(src, image);
+
+        Mat greyMat = new Mat();
+        Imgproc.cvtColor(image, greyMat, Imgproc.COLOR_RGB2GRAY, CvType.CV_32S);
+
+        final Bitmap bitmap = Bitmap.createBitmap(greyMat.cols(), greyMat.rows(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(greyMat, bitmap);
+
+        new Handler(Looper.getMainLooper()).post(new Runnable(){
+                                                     @Override
+                                                     public void run() {
+                                                         imageOne.setImageBitmap(bitmap);
+                                                     }
+                                                 });
+
+        return dst;
     }
 
     private static double angle(Point pt1, Point pt2, Point pt0) {
