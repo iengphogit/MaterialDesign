@@ -25,6 +25,7 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.DMatch;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfByte;
 import org.opencv.core.MatOfDMatch;
 import org.opencv.core.MatOfKeyPoint;
 import org.opencv.core.MatOfPoint;
@@ -37,6 +38,7 @@ import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
 import org.opencv.features2d.FastFeatureDetector;
 import org.opencv.features2d.FeatureDetector;
+import org.opencv.features2d.Features2d;
 import org.opencv.features2d.ORB;
 import org.opencv.imgproc.Imgproc;
 
@@ -45,6 +47,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
@@ -54,13 +57,19 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     TextView tvName;
     Scalar RED = new Scalar(255,0,0);
     Scalar GREEN = new Scalar(0,255,0);
-    FeatureDetector detector;
-    DescriptorExtractor descriptorExtractor;
-    DescriptorMatcher matcher;
 
-    Mat descriptors2, descriptors1;
+    private int w, h;
+
+    FeatureDetector detector;
+    DescriptorExtractor descriptor;
+    DescriptorMatcher matcher;
+    Mat descriptors2,descriptors1;
     Mat img1;
-    MatOfKeyPoint keypoints1, keypoints2;
+    MatOfKeyPoint keypoints1,keypoints2;
+
+    Mat mat1, grey;
+
+
 
     static {
         if (!OpenCVLoader.initDebug()) {
@@ -72,31 +81,25 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     CameraBridgeViewBase cameraBridgeViewBase;
     BaseLoaderCallback baseLoaderCallback;
-    Mat mat1, mat2, mat3;
-
-    //image holder
-    Mat bwIMG, hsvIMG, lrrIMG, urrIMG, dsIMG, usIMG, cIMG, hovIMG;
-    MatOfPoint2f approxCurve;
-
-    int threshold;
-
 
     /* Draw rectangle around contours */
     ImageView imageOne;
 
     private void initializeOpenCVDependencies() throws IOException{
+        mat1 = new Mat();
+        grey = new Mat();
 
-        bwIMG = new Mat();
-        dsIMG = new Mat();
-        hsvIMG = new Mat();
-        lrrIMG = new Mat();
-        urrIMG = new Mat();
-        usIMG = new Mat();
-        cIMG = new Mat();
-        hovIMG = new Mat();
-        approxCurve = new MatOfPoint2f();
+        detector = FeatureDetector.create(FeatureDetector.ORB);
+        descriptor = DescriptorExtractor.create(DescriptorExtractor.ORB);
+        matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
+        img1 = new Mat();
+        AssetManager assetManager = getAssets();
+        InputStream istr = assetManager.open("a.jpeg");
+        Bitmap bitmap = BitmapFactory.decodeStream(istr);
+        Utils.bitmapToMat(bitmap, img1);
+        Imgproc.cvtColor(img1, img1, Imgproc.COLOR_RGB2GRAY);
+        img1.convertTo(img1, 0); //converting the image to match with the type of the cameras image
 
-        descriptorExtractor = DescriptorExtractor.create(DescriptorExtractor.ORB);
     }
 
     @Override
@@ -108,8 +111,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         cameraBridgeViewBase = (JavaCameraView) findViewById(R.id.myCameraView);
         cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
         cameraBridgeViewBase.setCvCameraViewListener(this);
-
-        threshold = 100;
 
         baseLoaderCallback = new BaseLoaderCallback(this) {
             @Override
@@ -141,99 +142,49 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     @Override
     public void onCameraViewStarted(int width, int height) {
-        /*
-        mat1 = new Mat(width, height, CvType.CV_8UC4);
-        mat2 = new Mat(width, height, CvType.CV_8UC4);
-        mat3 = new Mat(width, height, CvType.CV_8UC4);
-
-        */
-
-        mat1 = new Mat(height, width, CvType.CV_8UC4);
-        mat2 = new Mat(height, width, CvType.CV_8UC4);
-        mat3 = new Mat(height, width, CvType.CV_8UC4);
+        w = width;
+        h = height;
     }
 
     @Override
     public void onCameraViewStopped() {
         mat1.release();
-//        mat2.release();
-//        mat3.release();
     }
 
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+        //mat1 = inputFrame.rgba();
+        grey = inputFrame.gray();
 
-        Mat dst = inputFrame.rgba();
-        Mat grey = inputFrame.gray();
+        Imgproc.pyrDown(grey, mat1, new Size(grey.cols() /2, grey.rows()/2));
+        Imgproc.pyrUp(mat1, mat1, grey.size());
+        Imgproc.Canny(mat1, mat1, 0 , 100);
+        Imgproc.dilate(mat1, mat1, new Mat(), new Point(-1,1),1);
 
-        Imgproc.pyrDown(grey, dsIMG, new Size(grey.cols() /2, grey.rows()/2));
-        Imgproc.pyrUp(dsIMG, usIMG, grey.size());
-        Imgproc.Canny(usIMG, bwIMG, 0 , threshold);
-        Imgproc.dilate(bwIMG, bwIMG, new Mat(), new Point(-1,1),1);
-
-        List<MatOfPoint> contours = new ArrayList<>();
-
-        cIMG = bwIMG.clone();
-
-        Imgproc.findContours(cIMG, contours, hovIMG, Imgproc.RETR_EXTERNAL,Imgproc.CHAIN_APPROX_SIMPLE);
-
-
-        for ( MatOfPoint cnt: contours){
-            MatOfPoint2f curve = new MatOfPoint2f(cnt.toArray());
-
-            Imgproc.approxPolyDP(curve, approxCurve, 0.02 * Imgproc.arcLength(curve,true),true);
-
-            int numberVertices = (int) approxCurve.total();
-
-            double contourArea = Imgproc.contourArea(cnt);
-            if(Math.abs(contourArea) < 100){
-                continue;
-            }
-
-            //Rectangle Detected
-            if( numberVertices >= 4 && numberVertices <= 6){
-
-                List<Double> cos = new ArrayList<>();
-                for(int j=0; j < numberVertices; j++){
-                    try {
-                        cos.add(angle(approxCurve.toArray()[j % numberVertices], approxCurve.toArray()[j-2],approxCurve.toArray()[j-1]));
-                        Collections.sort(cos);
-
-                        double minCos = cos.get(0);
-                        double maxCos = cos.get(cos.size() -1);
-
-                        if(numberVertices >= 4 && minCos >= -0.1 && maxCos <= 0.3){
-                            setLabel(dst, "X", cnt);
-                        }
-
-                    }catch (ArrayIndexOutOfBoundsException e){
-                        e.printStackTrace();
-                    }
-
-                }
-            }
+        AssetManager assetManager = getAssets();
+        InputStream istr = null;
+        try {
+            istr = assetManager.open("a.jpg");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        Bitmap bitmap = BitmapFactory.decodeStream(istr);
+        Utils.bitmapToMat(bitmap, img1);
+        Imgproc.cvtColor(img1, img1, Imgproc.COLOR_RGB2GRAY);
+        img1.convertTo(img1, 0);
 
+        return img1;
+    }
 
-        Bitmap src = BitmapFactory.decodeResource(getApplicationContext().getResources(), R.drawable.one);
+    public Mat recognize(Mat aInputFrame) {
 
-        Mat image = new Mat();
-        Utils.bitmapToMat(src, image);
+        Imgproc.cvtColor(aInputFrame, aInputFrame, Imgproc.COLOR_RGB2GRAY);
+        descriptors2 = new Mat();
+        keypoints2 = new MatOfKeyPoint();
+        detector.detect(aInputFrame, keypoints2);
+        descriptor.compute(aInputFrame, keypoints2, descriptors2);
 
-        Mat greyMat = new Mat();
-        Imgproc.cvtColor(image, greyMat, Imgproc.COLOR_RGB2GRAY, CvType.CV_32S);
-
-        final Bitmap bitmap = Bitmap.createBitmap(greyMat.cols(), greyMat.rows(),Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(greyMat, bitmap);
-
-        new Handler(Looper.getMainLooper()).post(new Runnable(){
-                                                     @Override
-                                                     public void run() {
-                                                         imageOne.setImageBitmap(bitmap);
-                                                     }
-                                                 });
-
-        return dst;
+        return descriptors2;
     }
 
     private static double angle(Point pt1, Point pt2, Point pt0) {

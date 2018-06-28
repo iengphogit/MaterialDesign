@@ -73,6 +73,7 @@ public class TileContentFragment extends Fragment {
             for (int i = 0; i < mPlacePictures.length; i++) {
                 mPlacePictures[i] = a.getDrawable(i);
             }
+
             a.recycle();
         }
 
